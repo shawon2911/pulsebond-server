@@ -1,7 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 dotenv.config();
 
 const uri = process.env.MONGODB_URI;
@@ -25,6 +25,13 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+const JWKS = createRemoteJWKSet(
+  new URL(`${CLIENT_URL}/api/auth/jwks`)
+)
+
+
+
 async function run() {
   try {
     await client.connect();
@@ -83,17 +90,14 @@ async function run() {
           });
         }
 
-        
         const finalDocument = {
           ...data,
-          status: data.status || "pending", 
-          createdAt: new Date(), 
+          status: data.status || "pending",
+          createdAt: new Date(),
         };
 
-       
         const result = await bloodReqCollection.insertOne(finalDocument);
 
-        
         res.status(201).send({
           success: true,
           message: "Emergency blood donation request created successfully!",
@@ -112,34 +116,68 @@ async function run() {
       }
     });
 
-
-
-    app.get("/bloodReq", async(req, res) => {
+    app.get("/bloodReq", async (req, res) => {
       try {
-        const {email, status} = req.query;
-        let filter = {}
-        if(email){
+        const { email, status } = req.query;
+        let filter = {};
+        if (email) {
           filter.requesterEmail = email;
         }
-        if(status && status !== "all"){
+        if (status && status !== "all") {
           filter.status = status;
         }
-        const result = await bloodReqCollection.find(filter).sort({createdAt: -1}).toArray();
-          return res.status(200).json({
-            success: true,
-            count: result.length,
-            data: result
-          });
+        const result = await bloodReqCollection
+          .find(filter)
+          .sort({ createdAt: -1 })
+          .toArray();
+        return res.status(200).json({
+          success: true,
+          count: result.length,
+          data: result,
+        });
       } catch (error) {
-          console.error(" Express Backend Error:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Internal Server Error"
-              });
+        console.error(" Express Backend Error:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Internal Server Error",
+        });
       }
     });
 
+    app.get("/bloodReq/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const requestDetails = await bloodReqCollection.findOne(query);
+        if (!requestDetails) {
+          return res
+            .status(404)
+            .json({ success: false, message: "No request found with this ID" });
+        }
+        return res.status(200).json({
+          success: true,
+          data: requestDetails,
+        });
+      } catch (error) {
+        console.error("🔥 Error fetching request details:", error);
+        return res
+          .status(500)
+          .json({ success: false, message: "Internal Server Error" });
+      }
+    });
 
+    app.patch("/bloodReq/:id", async (req, res) => {
+      const {status, donorName, donorEmail} = req.body;
+      const {id} = req.params;
+      const filter = {
+        _id : new ObjectId(id),
+      }
+      const updatedDoc = {
+        $set : {status, donorEmail, donorName}
+      }
+      const result = await bloodReqCollection.updateOne(filter, updatedDoc);
+      res.json({success: true, data:result});
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log(
