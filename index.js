@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { jwtVerify, createRemoteJWKSet } = require("jose-cjs");
 dotenv.config();
 
 const uri = process.env.MONGODB_URI;
@@ -26,11 +27,31 @@ const client = new MongoClient(uri, {
   },
 });
 
+const CLIENT_URL = process.env.CLIENT_URL; 
+
 const JWKS = createRemoteJWKSet(
   new URL(`${CLIENT_URL}/api/auth/jwks`)
-)
+);
 
-
+const verifyToken = async(req, res, next) => {
+  const authHeader =  req?.headers.authorization
+  console.log(authHeader)
+  if(!authHeader){
+    return res.status(401).json({ message: "unauthorized" });
+  }
+  const token = authHeader.split(" ")[1]
+  if(!token){
+    return res.status(401).json({ message: "unauthorized" });
+  }
+  try {
+    const {payload} = await jwtVerify(token, JWKS);
+    console.log(payload);
+  } catch (error) {
+    return res.status(403).json({message: "Forbidden"});
+  }
+  // console.log(token);
+  next()
+}
 
 async function run() {
   try {
@@ -40,7 +61,7 @@ async function run() {
     const userCollection = db.collection("user");
     const bloodReqCollection = db.collection("bloodReq");
 
-    app.patch("/dashboard/profile-update", async (req, res) => {
+    app.patch("/dashboard/profile-update", verifyToken,  async (req, res) => {
       try {
         const { email, name, bloodGroup, district, upazila } = req.body;
         if (!email) {
@@ -72,7 +93,7 @@ async function run() {
       }
     });
 
-    app.post("/dashboard/blood-req", async (req, res) => {
+    app.post("/dashboard/blood-req", verifyToken,  async (req, res) => {
       try {
         const data = req.body;
 
@@ -144,7 +165,7 @@ async function run() {
       }
     });
 
-    app.get("/bloodReq/:id", async (req, res) => {
+    app.get("/bloodReq/:id", verifyToken,  async (req, res) => {
       try {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
