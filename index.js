@@ -40,6 +40,7 @@ const verifyToken = async(req, res, next) => {
     return res.status(401).json({ message: "unauthorized" });
   }
   const token = authHeader.split(" ")[1]
+  console.log(token)
   if(!token){
     return res.status(401).json({ message: "unauthorized" });
   }
@@ -165,7 +166,7 @@ async function run() {
       }
     });
 
-    app.get("/bloodReq/:id", verifyToken,  async (req, res) => {
+    app.get("/bloodReq/:id",   async (req, res) => {
       try {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
@@ -187,7 +188,7 @@ async function run() {
       }
     });
 
-    app.patch("/bloodReq/:id", async (req, res) => {
+    app.patch("/bloodReq/:id", verifyToken, async (req, res) => {
       const {status, donorName, donorEmail} = req.body;
       const {id} = req.params;
       const filter = {
