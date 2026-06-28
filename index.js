@@ -114,7 +114,31 @@ async function run() {
 
 
 
-    
+    app.get("/bloodReq", async(req, res) => {
+      try {
+        const {email, status} = req.query;
+        let filter = {}
+        if(email){
+          filter.requesterEmail = email;
+        }
+        if(status && status !== "all"){
+          filter.status = status;
+        }
+        const result = await bloodReqCollection.find(filter).sort({createdAt: -1}).toArray();
+          return res.status(200).json({
+            success: true,
+            count: result.length,
+            data: result
+          });
+      } catch (error) {
+          console.error(" Express Backend Error:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Internal Server Error"
+              });
+      }
+    });
+
 
 
     await client.db("admin").command({ ping: 1 });
