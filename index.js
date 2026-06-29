@@ -202,7 +202,7 @@ async function run() {
     });
 
 
-    app.patch("/dashboard/bloodReq/edit/:id", async(req, res) => {
+    app.patch("/dashboard/bloodReq/edit/:id", verifyToken, async(req, res) => {
       const { id } = req.params;
       const filter = {_id : new ObjectId(id)};
       const {recipientName, hospitalName, fullAddress, donationDate, donationTime, requestMessage, bloodGroup, recipientDistrict, recipientUpazila} = req.body;
@@ -213,6 +213,12 @@ async function run() {
       const result = await bloodReqCollection.updateOne(filter, updatedDoc);
       res.json({ success: true, data: result });
     });
+
+    app.delete("/bloodReq/:id", async(req, res) => {
+      const {id} = req.params;
+      const result = await bloodReqCollection.deleteOne({_id: new ObjectId(id)});
+       res.json({ success: true, message: "Request deleted successfully" });
+    })
 
     
 
