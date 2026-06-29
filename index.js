@@ -58,6 +58,10 @@ async function run() {
   try {
     await client.connect();
 
+// client.connect(()=>{
+//   console.log('connecting to mongodb')
+// }).catch(console.dir)
+
     const db = client.db("pulse-bond");
     const userCollection = db.collection("user");
     const bloodReqCollection = db.collection("bloodReq");
@@ -214,7 +218,7 @@ async function run() {
       res.json({ success: true, data: result });
     });
 
-    app.delete("/bloodReq/:id", async(req, res) => {
+    app.delete("/bloodReq/:id", verifyToken, async(req, res) => {
       const {id} = req.params;
       const result = await bloodReqCollection.deleteOne({_id: new ObjectId(id)});
        res.json({ success: true, message: "Request deleted successfully" });
@@ -222,7 +226,7 @@ async function run() {
 
     
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
@@ -239,3 +243,5 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
+// module.exports = app;
