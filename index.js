@@ -35,18 +35,18 @@ const JWKS = createRemoteJWKSet(
 
 const verifyToken = async(req, res, next) => {
   const authHeader =  req?.headers.authorization
-  console.log(authHeader)
+  // console.log(authHeader)
   if(!authHeader){
     return res.status(401).json({ message: "unauthorized" });
   }
   const token = authHeader.split(" ")[1]
-  console.log(token)
+  // console.log(token)
   if(!token){
     return res.status(401).json({ message: "unauthorized" });
   }
   try {
     const {payload} = await jwtVerify(token, JWKS);
-    console.log(payload);
+    // console.log(payload);
   } catch (error) {
     return res.status(403).json({message: "Forbidden"});
   }
@@ -54,13 +54,13 @@ const verifyToken = async(req, res, next) => {
   next()
 }
 
-async function run() {
-  try {
-    await client.connect();
+// async function run() {
+//   try {
+//     await client.connect();
 
-// client.connect(()=>{
-//   console.log('connecting to mongodb')
-// }).catch(console.dir)
+client.connect(()=>{
+  console.log('connecting to mongodb')
+}).catch(console.dir)
 
     const db = client.db("pulse-bond");
     const userCollection = db.collection("user");
@@ -198,8 +198,13 @@ async function run() {
       const filter = {
         _id : new ObjectId(id),
       }
+      const updateFields = {}
+      if(status) updateFields.status = status;
+      if(donorName) updateFields.donorName = donorName;
+      if(donorEmail) updateFields.donorEmail = donorEmail;
+
       const updatedDoc = {
-        $set : {status, donorEmail, donorName}
+        $set : updateFields
       }
       const result = await bloodReqCollection.updateOne(filter, updatedDoc);
       res.json({success: true, data:result});
@@ -227,14 +232,14 @@ async function run() {
     
 
     // await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!",
-    );
-  } finally {
-    // await client.close();
-  }
-}
-run().catch(console.dir);
+//     console.log(
+//       "Pinged your deployment. You successfully connected to MongoDB!",
+//     );
+//   } finally {
+//     // await client.close();
+//   }
+// }
+// run().catch(console.dir);
 
 app.get("/", (req, res) => {
   res.send("Pulse Bond Server Running");
@@ -244,4 +249,4 @@ app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
-// module.exports = app;
+module.exports = app;
