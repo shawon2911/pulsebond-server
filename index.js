@@ -54,13 +54,13 @@ const verifyToken = async(req, res, next) => {
   next()
 }
 
-// async function run() {
-//   try {
-//     await client.connect();
+async function run() {
+  try {
+    await client.connect();
 
-client.connect(()=>{
-  console.log('connecting to mongodb')
-}).catch(console.dir)
+// client.connect(()=>{
+//   console.log('connecting to mongodb')
+// }).catch(console.dir)
 
     const db = client.db("pulse-bond");
     const userCollection = db.collection("user");
@@ -231,15 +231,15 @@ client.connect(()=>{
 
     
 
-    // await client.db("admin").command({ ping: 1 });
-//     console.log(
-//       "Pinged your deployment. You successfully connected to MongoDB!",
-//     );
-//   } finally {
-//     // await client.close();
-//   }
-// }
-// run().catch(console.dir);
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!",
+    );
+  } finally {
+    // await client.close();
+  }
+}
+run().catch(console.dir);
 
 app.get("/", (req, res) => {
   res.send("Pulse Bond Server Running");
@@ -249,4 +249,4 @@ app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
-module.exports = app;
+// module.exports = app;
