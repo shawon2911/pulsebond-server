@@ -150,7 +150,9 @@ async function run() {
           filter.requesterEmail = email;
         }
         if (status && status !== "all") {
-          filter.status = status;
+          filter.status = {
+            $in: [status]
+          }
         }
         const result = await bloodReqCollection
           .find(filter)
@@ -192,7 +194,7 @@ async function run() {
       }
     });
 
-    app.patch("/bloodReq/:id",  async (req, res) => {
+    app.patch("/bloodReq/:id", verifyToken,  async (req, res) => {
       const {status, donorName, donorEmail} = req.body;
       const {id} = req.params;
       const filter = {
@@ -200,8 +202,8 @@ async function run() {
       }
       const updateFields = {}
       if(status) updateFields.status = status;
-      if(donorName !== "undefined") updateFields.donorName = donorName;
-      if(donorEmail !== "undefined") updateFields.donorEmail = donorEmail;
+      if(donorName !== undefined) updateFields.donorName = donorName;
+      if(donorEmail !== undefined) updateFields.donorEmail = donorEmail;
 
       const updatedDoc = {
         $set : updateFields
