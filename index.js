@@ -231,6 +231,35 @@ async function run() {
        res.json({ success: true, message: "Request deleted successfully" });
     })
 
+    app.get("/searchDonor", async(req, res) => {
+     try {
+       const { bloodGroup, district, upazila } = req.query;
+      const filter = {}
+      if(bloodGroup){
+        filter.bloodGroup = bloodGroup
+      }
+      if(district){
+        filter.district = district
+      }
+      
+      if(upazila){
+        filter.upazila = upazila
+      }
+      const result = await userCollection.find(filter).toArray();
+      return res.status(200).json({
+          success: true,
+          count: result.length,
+          data: result,
+        });
+     } catch (error) {
+      console.error(" Express Backend Error:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Internal Server Error",
+        });
+     }
+    })
+
     
 
     await client.db("admin").command({ ping: 1 });
