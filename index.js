@@ -260,6 +260,44 @@ async function run() {
      }
     })
 
+    app.get("/stats", verifyToken,  async (req, res) => {
+    const totalDonors = await userCollection.countDocuments({ role: "donor"});
+    // const totalDonors = await userCollection.countDocuments({ role: {$in: ["donor", "volunteer"]}});
+    const totalRequests = await bloodReqCollection.countDocuments();
+   
+
+    res.json({ totalDonors, totalRequests });
+    });
+
+     app.get("/all-users", async (req, res) => {
+      try {
+        const { status } = req.query;
+        let filter = { role: {$ne: "admin"}};
+        
+        if (status && status !== "all") {
+          filter.status = {
+            $in: [status]
+          }
+        }
+        const result = await userCollection
+          .find(filter).toArray();
+          
+          
+        return res.status(200).json({
+          success: true,
+          count: result.length,
+          data: result,
+        });
+      } catch (error) {
+        console.error(" Express Backend Error:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Internal Server Error",
+        });
+      }
+    });
+
+
     
 
     await client.db("admin").command({ ping: 1 });
