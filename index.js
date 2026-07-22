@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { jwtVerify, createRemoteJWKSet } = require("jose-cjs");
+
 dotenv.config();
 
 const uri = process.env.MONGODB_URI;
@@ -296,6 +297,38 @@ async function run() {
         });
       }
     });
+
+    app.patch("/update-user-status/:id", verifyToken, async(req, res) => {
+     try {
+       const { id } =  req.params;
+      const {role, status} = req.body;
+      const filter = {_id : new ObjectId(id)};
+      const updateFields = {};
+      if(role) updateFields.role = role;
+      if(status) updateFields.status = status;
+      if (Object.keys(updateFields).length === 0) {
+      return res.status(400).send({ 
+        success: false, 
+        message: "No valid fields (role or status) provided for update!" 
+      });
+    }
+      const updateDoc = {
+        $set: updateFields
+      }
+      const result = await userCollection.updateOne(filter, updateDoc);
+      if (result.matchedCount === 0) {
+      return res.status(404).send({ success: false, message: "User not found!" });
+    }
+      res.send({ 
+        success: true, 
+        message: "User privileges updated successfully!", 
+        result 
+    });
+     } catch (error) {
+      console.error("User management execution block error: ", error);
+    res.status(500).send({ success: false, message: "Internal server error" });
+     }
+    })
 
 
     
