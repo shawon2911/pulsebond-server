@@ -28,46 +28,44 @@ const client = new MongoClient(uri, {
   },
 });
 
-const CLIENT_URL = process.env.CLIENT_URL; 
+const CLIENT_URL = process.env.CLIENT_URL;
 
-const JWKS = createRemoteJWKSet(
-  new URL(`${CLIENT_URL}/api/auth/jwks`)
-);
+const JWKS = createRemoteJWKSet(new URL(`${CLIENT_URL}/api/auth/jwks`));
 
-const verifyToken = async(req, res, next) => {
-  const authHeader =  req?.headers.authorization
+const verifyToken = async (req, res, next) => {
+  const authHeader = req?.headers.authorization;
   // console.log(authHeader)
-  if(!authHeader){
+  if (!authHeader) {
     return res.status(401).json({ message: "unauthorized" });
   }
-  const token = authHeader.split(" ")[1]
+  const token = authHeader.split(" ")[1];
   // console.log(token)
-  if(!token){
+  if (!token) {
     return res.status(401).json({ message: "unauthorized" });
   }
   try {
-    const {payload} = await jwtVerify(token, JWKS);
+    const { payload } = await jwtVerify(token, JWKS);
     // console.log(payload);
   } catch (error) {
-    return res.status(403).json({message: "Forbidden"});
+    return res.status(403).json({ message: "Forbidden" });
   }
   // console.log(token);
-  next()
-}
+  next();
+};
 
 async function run() {
   try {
     await client.connect();
 
-// client.connect(()=>{
-//   console.log('connecting to mongodb')
-// }).catch(console.dir)
+    // client.connect(()=>{
+    //   console.log('connecting to mongodb')
+    // }).catch(console.dir)
 
     const db = client.db("pulse-bond");
     const userCollection = db.collection("user");
     const bloodReqCollection = db.collection("bloodReq");
 
-    app.patch("/dashboard/profile-update", verifyToken,  async (req, res) => {
+    app.patch("/dashboard/profile-update", verifyToken, async (req, res) => {
       try {
         const { email, name, bloodGroup, district, upazila } = req.body;
         if (!email) {
@@ -99,7 +97,7 @@ async function run() {
       }
     });
 
-    app.post("/dashboard/blood-req", verifyToken,  async (req, res) => {
+    app.post("/dashboard/blood-req", verifyToken, async (req, res) => {
       try {
         const data = req.body;
 
@@ -152,8 +150,8 @@ async function run() {
         }
         if (status && status !== "all") {
           filter.status = {
-            $in: [status]
-          }
+            $in: [status],
+          };
         }
         const result = await bloodReqCollection
           .find(filter)
@@ -173,7 +171,7 @@ async function run() {
       }
     });
 
-    app.get("/bloodReq/:id",   async (req, res) => {
+    app.get("/bloodReq/:id", async (req, res) => {
       try {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
@@ -195,95 +193,79 @@ async function run() {
       }
     });
 
-    app.patch("/bloodReq/:id", verifyToken,  async (req, res) => {
-      const {status, donorName, donorEmail} = req.body;
-      const {id} = req.params;
-      const filter = {
-        _id : new ObjectId(id),
-      }
-      const updateFields = {}
-      if(status) updateFields.status = status;
-      if(donorName !== undefined) updateFields.donorName = donorName;
-      if(donorEmail !== undefined) updateFields.donorEmail = donorEmail;
-
-      const updatedDoc = {
-        $set : updateFields
-      }
-      const result = await bloodReqCollection.updateOne(filter, updatedDoc);
-      res.json({success: true, data:result});
-    });
-
-
-    app.patch("/dashboard/bloodReq/edit/:id", verifyToken, async(req, res) => {
+    app.patch("/bloodReq/:id", verifyToken, async (req, res) => {
+      const { status, donorName, donorEmail } = req.body;
       const { id } = req.params;
-      const filter = {_id : new ObjectId(id)};
-      const {recipientName, hospitalName, fullAddress, donationDate, donationTime, requestMessage, bloodGroup, recipientDistrict, recipientUpazila} = req.body;
+      const filter = {
+        _id: new ObjectId(id),
+      };
+      const updateFields = {};
+      if (status) updateFields.status = status;
+      if (donorName !== undefined) updateFields.donorName = donorName;
+      if (donorEmail !== undefined) updateFields.donorEmail = donorEmail;
 
       const updatedDoc = {
-        $set: {recipientName, hospitalName, fullAddress, donationDate, donationTime, requestMessage, bloodGroup, recipientDistrict, recipientUpazila}
-      }
+        $set: updateFields,
+      };
       const result = await bloodReqCollection.updateOne(filter, updatedDoc);
       res.json({ success: true, data: result });
     });
 
-    app.delete("/bloodReq/:id", verifyToken, async(req, res) => {
-      const {id} = req.params;
-      const result = await bloodReqCollection.deleteOne({_id: new ObjectId(id)});
-       res.json({ success: true, message: "Request deleted successfully" });
-    })
+    app.patch("/dashboard/bloodReq/edit/:id", verifyToken, async (req, res) => {
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const {
+        recipientName,
+        hospitalName,
+        fullAddress,
+        donationDate,
+        donationTime,
+        requestMessage,
+        bloodGroup,
+        recipientDistrict,
+        recipientUpazila,
+      } = req.body;
 
-    app.get("/searchDonor", async(req, res) => {
-     try {
-       const { bloodGroup, district, upazila } = req.query;
-      const filter = {}
-      if(bloodGroup){
-        filter.bloodGroup = bloodGroup
-      }
-      if(district){
-        filter.district = district
-      }
-      
-      if(upazila){
-        filter.upazila = upazila
-      }
-      const result = await userCollection.find(filter).toArray();
-      return res.status(200).json({
-          success: true,
-          count: result.length,
-          data: result,
-        });
-     } catch (error) {
-      console.error(" Express Backend Error:", error);
-        return res.status(500).json({
-          success: false,
-          message: "Internal Server Error",
-        });
-     }
-    })
-
-    app.get("/stats", verifyToken,  async (req, res) => {
-    const totalDonors = await userCollection.countDocuments({ role: "donor"});
-    // const totalDonors = await userCollection.countDocuments({ role: {$in: ["donor", "volunteer"]}});
-    const totalRequests = await bloodReqCollection.countDocuments();
-   
-
-    res.json({ totalDonors, totalRequests });
+      const updatedDoc = {
+        $set: {
+          recipientName,
+          hospitalName,
+          fullAddress,
+          donationDate,
+          donationTime,
+          requestMessage,
+          bloodGroup,
+          recipientDistrict,
+          recipientUpazila,
+        },
+      };
+      const result = await bloodReqCollection.updateOne(filter, updatedDoc);
+      res.json({ success: true, data: result });
     });
 
-     app.get("/all-users", async (req, res) => {
+    app.delete("/bloodReq/:id", verifyToken, async (req, res) => {
+      const { id } = req.params;
+      const result = await bloodReqCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.json({ success: true, message: "Request deleted successfully" });
+    });
+
+    app.get("/searchDonor", async (req, res) => {
       try {
-        const { status } = req.query;
-        let filter = { role: {$ne: "admin"}};
-        
-        if (status && status !== "all") {
-          filter.status = {
-            $in: [status]
-          }
+        const { bloodGroup, district, upazila } = req.query;
+        const filter = {};
+        if (bloodGroup) {
+          filter.bloodGroup = bloodGroup;
         }
-        const result = await userCollection
-          .find(filter).toArray();
-          
-          
+        if (district) {
+          filter.district = district;
+        }
+
+        if (upazila) {
+          filter.upazila = upazila;
+        }
+        const result = await userCollection.find(filter).toArray();
         return res.status(200).json({
           success: true,
           count: result.length,
@@ -298,41 +280,95 @@ async function run() {
       }
     });
 
-    app.patch("/update-user-status/:id", verifyToken, async(req, res) => {
-     try {
-       const { id } =  req.params;
-      const {role, status} = req.body;
-      const filter = {_id : new ObjectId(id)};
-      const updateFields = {};
-      if(role) updateFields.role = role;
-      if(status) updateFields.status = status;
-      if (Object.keys(updateFields).length === 0) {
-      return res.status(400).send({ 
-        success: false, 
-        message: "No valid fields (role or status) provided for update!" 
+    app.get("/stats", verifyToken, async (req, res) => {
+      const totalDonors = await userCollection.countDocuments({
+        role: "donor",
       });
-    }
-      const updateDoc = {
-        $set: updateFields
-      }
-      const result = await userCollection.updateOne(filter, updateDoc);
-      if (result.matchedCount === 0) {
-      return res.status(404).send({ success: false, message: "User not found!" });
-    }
-      res.send({ 
-        success: true, 
-        message: "User privileges updated successfully!", 
-        result 
+      // const totalDonors = await userCollection.countDocuments({ role: {$in: ["donor", "volunteer"]}});
+      const totalRequests = await bloodReqCollection.countDocuments();
+
+      res.json({ totalDonors, totalRequests });
     });
-     } catch (error) {
-      console.error("User management execution block error: ", error);
-    res.status(500).send({ success: false, message: "Internal server error" });
-     }
-    })
 
+    app.get("/all-users", async (req, res) => {
+      try {
+        const { status } = req.query;
+        let filter = { role: { $ne: "admin" } };
 
-    
+        if (status && status !== "all") {
+          filter.status = {
+            $in: [status],
+          };
+        }
+        const result = await userCollection.find(filter).toArray();
 
+        return res.status(200).json({
+          success: true,
+          count: result.length,
+          data: result,
+        });
+      } catch (error) {
+        console.error(" Express Backend Error:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Internal Server Error",
+        });
+      }
+    });
+
+    app.patch("/update-user-status/:id", verifyToken, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { role, status } = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const updateFields = {};
+        if (role) updateFields.role = role;
+        if (status) updateFields.status = status;
+        if (Object.keys(updateFields).length === 0) {
+          return res.status(400).send({
+            success: false,
+            message: "No valid fields (role or status) provided for update!",
+          });
+        }
+        const updateDoc = {
+          $set: updateFields,
+        };
+        const result = await userCollection.updateOne(filter, updateDoc);
+        if (result.matchedCount === 0) {
+          return res
+            .status(404)
+            .send({ success: false, message: "User not found!" });
+        }
+        res.send({
+          success: true,
+          message: "User privileges updated successfully!",
+          result,
+        });
+      } catch (error) {
+        console.error("User management execution block error: ", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Internal server error" });
+      }
+    });
+
+   app.get("/admin/all-blood-requests", verifyToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    console.log("status", status);
+    console.log("token verified, user:", req.user); // verifyToken এ req.user set করো
+    const filter = status && status !== "all" ? { status } : {};
+    const result = await bloodReqCollection
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .toArray();
+    console.log("result count", result.length);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
