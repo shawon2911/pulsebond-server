@@ -2,27 +2,33 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 
 const uri = process.env.MONGODB_URI;
 
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
+if (!uri) {
+  throw new Error("Please add your Mongo URI to .env");
+}
 
-const db = client.db("pulse-bond");
-const userCollection = db.collection("user");
-const bloodReqCollection = db.collection("bloodReq");
+let client;
+let clientPromise;
 
-const connectDB = async () => {
-  try {
-    await client.connect();
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } catch (error) {
-    console.error("MongoDB Connection Failed:", error);
-    process.exit(1);
-  }
+if (!global._mongoClientPromise) {
+  client = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    },
+  });
+  global._mongoClientPromise = client.connect();
+}
+clientPromise = global._mongoClientPromise;
+
+// Functional initialization helper models
+const getDb = async () => {
+  const connectedClient = await clientPromise;
+  const db = connectedClient.db("pulse-bond");
+  return {
+    userCollection: db.collection("user"),
+    bloodReqCollection: db.collection("bloodReq"),
+  };
 };
 
-module.exports = { connectDB, client, userCollection, bloodReqCollection };
+module.exports = { getDb };
