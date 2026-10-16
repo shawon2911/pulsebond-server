@@ -16,14 +16,45 @@ exports.createBloodReq = async (req, res) => {
 exports.getBloodRequests = async (req, res) => {
   try {
     const { bloodReqCollection } = await getDb();
-    const { email, status } = req.query;
+    const { email, status, page = 1, limit = 10 } = req.query;
+
     let filter = {};
     if (email) filter.requesterEmail = email;
-    if (status && status !== "all") filter.status = { $in: [status] };
-    const result = await bloodReqCollection.find(filter).sort({ createdAt: -1 }).toArray();
-    return res.status(200).json({ success: true, data: result });
+    if (status && status !== "all") filter.status = status;
+
+    // Pagination calculations
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // Total count ber kora for pagination metadata
+    const totalRequests = await bloodReqCollection.countDocuments(filter);
+
+    // Fetch paginated data
+    const result = await bloodReqCollection
+      .find(filter)
+      .sort({ _id: -1 })
+      .skip(skip)
+      .limit(limitNumber)
+      .toArray();
+
+    return res.status(200).json({ 
+      success: true, 
+      data: result,
+      pagination: {
+        totalData: totalRequests,
+        currentPage: pageNumber,
+        totalPages: Math.ceil(totalRequests / limitNumber),
+        limit: limitNumber
+      }
+    });
+
   } catch (error) {
-    return res.status(500).json({ success: false });
+    console.error("Error fetching blood requests:", error);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Internal Server Error" 
+    });
   }
 };
 
