@@ -33,11 +33,26 @@ exports.searchDonor = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const { userCollection } = await getDb();
-    const { status } = req.query;
+    const { status, page = 1, limit = 15 } = req.query;
     let filter = { role: { $ne: "admin" } };
     if (status && status !== "all") filter.status = { $in: [status] };
-    const result = await userCollection.find(filter).toArray();
-    return res.status(200).json({ success: true, count: result.length, data: result });
+
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+    const totalRequests = await userCollection.countDocuments(filter);
+    const result = await userCollection.find(filter).sort({_id: -1}).skip(skip).limit(limitNumber).toArray();
+    return res.status(200).json({
+       success: true,
+       count: result.length,
+       data: result,
+       pagination: {
+          totalData: totalRequests,
+          currentPage: pageNumber,
+          totalPages: Math.ceil(totalRequests/limitNumber),
+          limit: limitNumber
+       }
+      });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
